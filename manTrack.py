@@ -155,7 +155,7 @@ class mplApp(tk.Frame):
         self.workingDir = folder
         img = imread(imgDir)        
         self.img = img
-        h, w = img.shape
+        h, w = img.shape[-2:]
         dpi = 100
         hcanvas = h
         wcanvas = w
@@ -178,7 +178,7 @@ class mplApp(tk.Frame):
         
     def dataOpenDialog(self):
         dataDir = TFD.askopenfilename(initialdir = self.workingDir)
-        if dataDir.endswith('.dat') or dataDir.endswith('.txt'):
+        if dataDir.endswith('.dat') or dataDir.endswith('.csv'):
             folder, filename = os.path.split(dataDir)
             self.workingDir = folder
             self.data = pd.read_csv(dataDir, delimiter='\t')
@@ -329,7 +329,7 @@ class mplApp(tk.Frame):
         self.mousePosStringVar.set(str(self.mousePos[0]) + ', ' + str(self.mousePos[1]))
     def mergeDataButtonCallback(self):        
         if self.addedData.empty == False:
-            self.data = self.data.append(self.addedData, ignore_index=True)
+            self.data = pd.concat(self.data, self.addedData)
             self.addedData = pd.DataFrame()    
         if self.deletedData.empty == False:
             # if len(self.deletedData)==1
