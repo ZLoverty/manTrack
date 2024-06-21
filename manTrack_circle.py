@@ -89,25 +89,9 @@ class mplApp(tk.Frame):
                                 command=self.modeCallback)
             rb.pack(fill='x')
 
-        # Miscellaneous buttons and other widgets
         spaceFrame2 = tk.Frame(self.buttonFrame, height=30)
         spaceFrame2.pack()
-        # PPULabel = tk.Label(self.buttonFrame, text='INPUT PPU & MA', font=('Helvetica', 10, 'bold'))
-        # PPULabel.pack(fill='x')
-        # inputFrame1 = tk.Frame(self.buttonFrame, height=12)
-        # inputFrame1.pack()
-        # PPULabel = tk.Label(inputFrame1, text='PPU', width=7)
-        # PPULabel.pack(side='left', fill='y')
-        # self.PPUEntry = tk.Entry(inputFrame1, textvariable=self.PPUStringVar, width=8)
-        # self.PPUEntry.pack(side='left', fill='y')
-        # self.PPUEntry.bind('<Return>', self.PPUEnterCallback)
-        # inputFrame2 = tk.Frame(self.buttonFrame, height=12)
-        # inputFrame2.pack()
-        # MALabel = tk.Label(inputFrame2, text='MinAxis', width=7)
-        # MALabel.pack(side='left', fill='y')
-        # self.minorAxisEntry = tk.Entry(inputFrame2, textvariable=self.minorAxisStringVar, width=8)
-        # self.minorAxisEntry.pack(fill='y')
-        # self.minorAxisEntry.bind('<Return>', self.MAEnterCallback)                     
+                 
         self.backwardButton = tk.Button(self.buttonFrame, text='Backward', state='disabled', command=self.backwardButtonCallback)
         self.backwardButton.pack(fill='x')       
         self.colorButton = tk.Button(self.buttonFrame, text='Color/Mono plot', command=self.colorButtonCallback)
@@ -126,13 +110,6 @@ class mplApp(tk.Frame):
         self.deleteTmpLabel.pack(fill='x')
         self.addTmpLabel = tk.Label(self.buttonFrame, textvariable=self.addTmpStringVar)
         self.addTmpLabel.pack(fill='x')
-        # self.PPULabel = tk.Label(self.buttonFrame, textvariable=self.PPULabelStringVar)
-        # self.PPULabel.pack(fill='x')
-        # self.minorAxisLabel = tk.Label(self.buttonFrame, textvariable=self.minorAxisLabelStringVar)
-        # self.minorAxisLabel.pack(fill='x')
-        
-        # self.testButton = tk.Button(self.buttonFrame, text='test', command=self.testButtonCallback)
-        # self.testButton.pack(fill='x')
         self.updateStatus()
     
     def initCanvas(self):        
@@ -232,22 +209,6 @@ class mplApp(tk.Frame):
             self.canvas.mpl_disconnect(self.dID)
             self.canvas.mpl_disconnect(self.tID)
 
-    # def PPUEnterCallback(self, event):
-    #     try:
-    #         self.PPU = float(self.PPUStringVar.get())
-    #         self.PPULabelStringVar.set(f'PPU: {self.PPU}')
-    #     except ValueError:
-    #         TMB.showerror('Input error', 'PPU must be a number')
-    #     self.updateStatus()
-
-    # def MAEnterCallback(self, event):
-    #     try:
-    #         self.minorAxis = float(self.minorAxisStringVar.get())
-    #         self.minorAxisLabelStringVar.set(f'Minor Axis: {self.minorAxis}')
-    #     except ValueError:
-    #         TMB.showerror('Input error', 'Minor Axis must be a number')
-    #     self.updateStatus()
-
     def mouseDeleteCallback(self, event):
         artist = event.artist
         artist.set_visible(False)
@@ -285,6 +246,7 @@ class mplApp(tk.Frame):
         elli = mpatches.Circle((X, Y), R)
         elli.set_fill(False)
         elli.set_color('red')
+        elli.set_picker("true")
         self.ax.add_patch(elli)
         self.canvas.draw()
         print('Add an ellipse at (%.1f, %.1f) ...' % (X, Y))
@@ -341,7 +303,6 @@ class mplApp(tk.Frame):
 
     def mergeDataButtonCallback(self):
         if self.deletedData.empty == False:
-            # if len(self.deletedData)==1
             for index, value in self.deletedData.iterrows():                    
                 self.data.drop(index=index, inplace=True)
             self.deletedData = pd.DataFrame()
