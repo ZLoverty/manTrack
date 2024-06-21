@@ -240,13 +240,13 @@ class mplApp(tk.Frame):
     #         TMB.showerror('Input error', 'PPU must be a number')
     #     self.updateStatus()
 
-    def MAEnterCallback(self, event):
-        try:
-            self.minorAxis = float(self.minorAxisStringVar.get())
-            self.minorAxisLabelStringVar.set(f'Minor Axis: {self.minorAxis}')
-        except ValueError:
-            TMB.showerror('Input error', 'Minor Axis must be a number')
-        self.updateStatus()
+    # def MAEnterCallback(self, event):
+    #     try:
+    #         self.minorAxis = float(self.minorAxisStringVar.get())
+    #         self.minorAxisLabelStringVar.set(f'Minor Axis: {self.minorAxis}')
+    #     except ValueError:
+    #         TMB.showerror('Input error', 'Minor Axis must be a number')
+    #     self.updateStatus()
 
     def mouseDeleteCallback(self, event):
         artist = event.artist
