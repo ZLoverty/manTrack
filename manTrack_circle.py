@@ -204,14 +204,14 @@ class mplApp(tk.Frame):
             TMB.showerror('Data error', 'Please load data')
             return
         data = self.data
-        # for artist in self.artistList:
-        #     artist.remove()
-        # self.artistList = []
+        for artist in self.artistList:
+            artist.remove()
+        self.artistList = []
         for i, row in data.iterrows():
-            x = row['X']# * self.compressRatio
-            y = row['Y']# * self.compressRatio
+            x = row['x']# * self.compressRatio
+            y = row['y']# * self.compressRatio
             color = 'r'
-            patch = mpatches.Circle((x, y), radius=row["Major"], fill=False, color=color)
+            patch = mpatches.Circle((x, y), radius=row["r"], fill=False, color=color)
             patch.set_picker(True)
             self.ax.add_patch(patch)
             self.artistList.append(patch)
@@ -281,24 +281,15 @@ class mplApp(tk.Frame):
         Area = -1;
         X = (self.x1 + self.x2) / 2 
         Y = (self.y1 + self.y2) / 2
-        Major = ((self.x1 - self.x2)**2+(self.y1 - self.y2)**2)**.5 
-        Minor = Major
-        Angle = math.atan((self.y1 - self.y2)/(self.x1 - self.x2))
-        xy = (X, Y)
-        width = Major
-        height =  Minor
-        angle = Angle/math.pi*180
-        elli = mpatches.Ellipse(xy, width, height, angle=angle)
+        R = ((self.x1 - self.x2)**2+(self.y1 - self.y2)**2)**.5 / 2
+        elli = mpatches.Circle((X, Y), R)
         elli.set_fill(False)
         elli.set_color('red')
         self.ax.add_patch(elli)
         self.canvas.draw()
-        print('Add an ellipse at (%.1f, %.1f) ...' % (xy[0], xy[1]))
-        if Angle < 0:
-            Angle = Angle + math.pi
-        Angle = math.degrees(Angle)
-        Slice = 1
-        data = np.array([[X, Y, Major, Minor, Angle]])
+        print('Add an ellipse at (%.1f, %.1f) ...' % (X, Y))
+
+        data = np.array([[X, Y, R]])
         header = self.data.columns.tolist()
         
         addedDataFrame = pd.DataFrame(data=data, columns=header)
@@ -349,14 +340,14 @@ class mplApp(tk.Frame):
         self.updateStatus()
 
     def mergeDataButtonCallback(self):
-        if self.addedData.empty == False:
-            self.data = pd.concat([self.data, self.addedData])
-            self.addedData = pd.DataFrame()    
         if self.deletedData.empty == False:
             # if len(self.deletedData)==1
             for index, value in self.deletedData.iterrows():                    
                 self.data.drop(index=index, inplace=True)
             self.deletedData = pd.DataFrame()
+        if self.addedData.empty == False:
+            self.data = pd.concat([self.data, self.addedData])
+            self.addedData = pd.DataFrame()    
         # self.mode.set('I')
         # self.modeCallback()
         self.updateStatus()
