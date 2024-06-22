@@ -4,7 +4,7 @@ import tkinter.messagebox as TMB
 from matplotlib.figure import Figure
 from matplotlib.image import imread
 from matplotlib import colors
-import matplotlib.patches as mpatches
+import matplotlib.patches as mpatch
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import ctypes
 import os
@@ -27,27 +27,29 @@ class mplApp(tk.Frame):
         self.mode = tk.StringVar()
         self.colorButtonText = tk.StringVar()
         self.dataStatStringVar = tk.StringVar()
-        self.deleteTmpStringVar = tk.StringVar()
-        self.addTmpStringVar = tk.StringVar()        
+        self.cacheStringVar = tk.StringVar()
+        # self.deleteTmpStringVar = tk.StringVar()
+        # self.addTmpStringVar = tk.StringVar()        
         # self.PPUStringVar = tk.StringVar()
-        self.minorAxisStringVar = tk.StringVar()
+        # self.minorAxisStringVar = tk.StringVar()
         # self.PPULabelStringVar = tk.StringVar()
-        self.minorAxisLabelStringVar = tk.StringVar()
+        # self.minorAxisLabelStringVar = tk.StringVar()
         # self.PPU = 100
-        self.minorAxis = 10
+        # self.minorAxis = 10
         self.mousePosStringVar.set(str(self.mousePos[0]) + ', ' + str(self.mousePos[1]))
         self.mode.set('I')
-        self.colorButtonText.set('Color plot')
+        # self.colorButtonText.set('Color plot')
         self.workingDir = os.getcwd()
+        self.history_list = []
         
         self.dID = -1
         self.tID = -1
-        self.deletedArtist = []
-        self.addedArtist = []
-        self.artistList = []
+        # self.deletedArtist = []
+        # self.addedArtist = []
+        # self.artistList = []
         self.data = pd.DataFrame()
-        self.addedData = pd.DataFrame()
-        self.deletedData = pd.DataFrame()
+        # self.addedData = pd.DataFrame()
+        # self.deletedData = pd.DataFrame()
         # self.PPUStringVar.set(str(self.PPU))
         # self.minorAxisStringVar.set(str(self.minorAxis))
         
@@ -57,22 +59,18 @@ class mplApp(tk.Frame):
         self.buttonFrame.pack(side='left')
         loadLabel = tk.Label(self.buttonFrame, text='DATA LOADING', font=('Helvetica', 10, 'bold'))
         loadLabel.pack(fill='x')
-        self.loadButton = tk.Button(self.buttonFrame, text='Load', command=self.imgOpenDialog)
+        self.loadButton = tk.Button(self.buttonFrame, text='Load image', command=self.imgOpenDialog)
         self.loadButton.pack(fill='x')
         self.loadDataButton = tk.Button(self.buttonFrame, text='Load data', command=self.dataOpenDialog)
         self.loadDataButton.pack(fill='x')
         self.drawDataButton = tk.Button(self.buttonFrame, text='Draw data', command=self.drawData)
         self.drawDataButton.pack(fill='x')
-        self.reloadButton = tk.Button(self.buttonFrame, text='Reload', command=self.reloadButtonCallback)
-        self.reloadButton.pack(fill='x')
         spaceFrame1 = tk.Frame(self.buttonFrame, height=30)
         spaceFrame1.pack()
         
         # DATA SAVING buttons
         saveLabel = tk.Label(self.buttonFrame, text='DATA SAVING', font=('Helvetica', 10, 'bold'))
         saveLabel.pack(fill='x')
-        self.mergeDataButton = tk.Button(self.buttonFrame, text='Merge data', command=self.mergeDataButtonCallback)
-        self.mergeDataButton.pack(fill='x')
         self.saveDataButton = tk.Button(self.buttonFrame, text='Save data', command=self.saveDataButtonCallback)
         self.saveDataButton.pack(fill='x')
         self.saveFigButton = tk.Button(self.buttonFrame, text='Save figure', command=self.saveFigButtonCallback)
@@ -85,17 +83,13 @@ class mplApp(tk.Frame):
         modeLabel.pack(fill='x')
         MODES = [('Idle mode', 'I'), ('Delete mode', 'D'), ('Track mode', 'T')]
         for text, mode in MODES:
-            rb = tk.Radiobutton(self.buttonFrame, text=text, variable=self.mode, value=mode, indicatoron=0,
-                                command=self.modeCallback)
+            rb = tk.Radiobutton(self.buttonFrame, text=text, variable=self.mode, value=mode, indicatoron=0, command=self.modeCallback)
             rb.pack(fill='x')
-
         spaceFrame2 = tk.Frame(self.buttonFrame, height=30)
         spaceFrame2.pack()
                  
         self.backwardButton = tk.Button(self.buttonFrame, text='Backward', state='disabled', command=self.backwardButtonCallback)
         self.backwardButton.pack(fill='x')       
-        self.colorButton = tk.Button(self.buttonFrame, text='Color/Mono plot', command=self.colorButtonCallback)
-        self.colorButton.pack(fill='x')
         
         # Status block, tracking status of background data
         spaceFrame2 = tk.Frame(self.buttonFrame, height=30)
@@ -106,10 +100,10 @@ class mplApp(tk.Frame):
         self.mousePositionLabel.pack(fill='x') 
         self.dataStatLabel = tk.Label(self.buttonFrame, textvariable=self.dataStatStringVar)
         self.dataStatLabel.pack(fill='x')
-        self.deleteTmpLabel = tk.Label(self.buttonFrame, textvariable=self.deleteTmpStringVar)
-        self.deleteTmpLabel.pack(fill='x')
-        self.addTmpLabel = tk.Label(self.buttonFrame, textvariable=self.addTmpStringVar)
-        self.addTmpLabel.pack(fill='x')
+        self.cacheLabel = tk.Label(self.buttonFrame, textvariable=self.cacheStringVar)
+        self.cacheLabel.pack(fill='x')
+        # self.addTmpLabel = tk.Label(self.buttonFrame, textvariable=self.addTmpStringVar)
+        # self.addTmpLabel.pack(fill='x')
         self.updateStatus()
     
     def initCanvas(self):        
@@ -169,9 +163,8 @@ class mplApp(tk.Frame):
                 self.data = pd.read_csv(dataDir)
             elif filename.endswith(('.xls', '.xlsx')):
                 self.data = pd.read_excel(dataDir)
-            self.artistList = []
-            self.dID = -1
-            self.tID = -1
+            # self.artistList = []
+
         except Exception as e:
             TMB.showerror('File type error', f"Error reading file: {e}")
         self.updateStatus()
@@ -181,152 +174,157 @@ class mplApp(tk.Frame):
             TMB.showerror('Data error', 'Please load data')
             return
         data = self.data
-        for artist in self.artistList:
+
+        # if there exists any artist, remove it
+        for artist in self.ax.artists:
             artist.remove()
-        self.artistList = []
+
+        # create artist for all entries in data table
+        # add the artists to canvas
         for i, row in data.iterrows():
-            x = row['x']# * self.compressRatio
-            y = row['y']# * self.compressRatio
-            color = 'r'
-            patch = mpatches.Circle((x, y), radius=row["r"], fill=False, color=color)
-            patch.set_picker(True)
+            x = row['x']
+            y = row['y']
+
+            # set patch url as the index of the patch
+            # will be used for deleting entry in the data table
+            patch = mpatch.Circle((x, y), 
+                                    radius=row["r"], 
+                                    fill=False, 
+                                    color="r",
+                                    picker=True,
+                                    url=i)
+            
+
             self.ax.add_patch(patch)
-            self.artistList.append(patch)
+            # self.artistList.append(patch)
         self.canvas.draw()
 
     def modeCallback(self):
         mode = self.mode.get()
-        if mode == 'D':
-            self.canvas.get_tk_widget().config(cursor='cross')
-            self.dID = self.canvas.mpl_connect('pick_event', self.mouseDeleteCallback)
-            self.canvas.mpl_disconnect(self.tID)
-        elif mode == 'T':
-            self.canvas.get_tk_widget().config(cursor='tcross')
-            self.tID = self.canvas.mpl_connect('button_press_event', self.mouseTrackPressCallback)
-            self.canvas.mpl_disconnect(self.dID)
-        else:
-            self.canvas.get_tk_widget().config(cursor='')
-            self.canvas.mpl_disconnect(self.dID)
-            self.canvas.mpl_disconnect(self.tID)
+        if mode == 'D': self.deleteMode()
+        elif mode == 'T': self.trackMode()
+        else: self.idleMode()
+            
+    def idleMode(self):
+        self.canvas.get_tk_widget().config(cursor='')
+        self.canvas.mpl_disconnect(self.dID)
+        self.canvas.mpl_disconnect(self.tID)
+
+    def trackMode(self):
+        self.canvas.get_tk_widget().config(cursor='tcross')
+        self.tID = self.canvas.mpl_connect('button_press_event', self.mouseTrackPressCallback)
+        self.canvas.mpl_disconnect(self.dID)
+        
+    def deleteMode(self):
+        self.canvas.get_tk_widget().config(cursor='cross')
+        self.dID = self.canvas.mpl_connect('pick_event', self.mouseDeleteCallback)
+        self.canvas.mpl_disconnect(self.tID)
 
     def mouseDeleteCallback(self, event):
+        # get picked artist
         artist = event.artist
-        artist.set_visible(False)
-        artist.set_picker(None)
-        self.canvas.draw()
-        xy = artist.center
-        index = self.artistList.index(artist)
-        print('Delete an ellipse at (%.1f, %.1f) ...' % (xy[0], xy[1]))      
-        deletedDataFrame = self.data.iloc[index].to_frame().transpose()
 
-        try:
-            self.deletedData = pd.concat([self.deletedData, deletedDataFrame])
-        except:
-            self.deletedData = deletedDataFrame
+        # delete from canvas
+        artist.remove()
+        
+        # read artist info and print to stdout
+        xy = artist.center
+        print('Delete an ellipse at (%.1f, %.1f) ...' % (xy[0], xy[1]))      
+
+        # get the index of entry to delete
+        del_ind = artist.get_url()
+
+        # delete the chosen entry
+        self.data.drop(index=del_ind, inplace=True)
+
+        # add the deleted artist to history_list, in case we want to revert the edit
+        self.history_list.append((artist, "delete"))
+
+        # set backward button to active
         self.backwardButton.config(state='normal')
-        self.deletedArtist.append(artist)
+
+        # update canvas and data status display
+        self.canvas.draw()
         self.updateStatus()
 
     def mouseTrackPressCallback(self, event):
-        # print('you pressed', event.button, event.xdata, event.ydata)
+        # get the x y data at the click as the first point of the diameter
         self.x1 = event.xdata
         self.y1 = event.ydata
+        # activate the button release event
         self.releaseID = self.canvas.mpl_connect('button_release_event', self.mouseTrackReleaseCallback)      
         
     def mouseTrackReleaseCallback(self, event):
         self.canvas.mpl_disconnect(self.releaseID)
-        # print('you released', event.button, event.xdata, event.ydata)
+        # get the x y data at the release as the second point of the diameter
         self.x2 = event.xdata
         self.y2 = event.ydata               
-        No = -1;
-        Area = -1;
+
+        # compute center location and radius
         X = (self.x1 + self.x2) / 2 
         Y = (self.y1 + self.y2) / 2
         R = ((self.x1 - self.x2)**2+(self.y1 - self.y2)**2)**.5 / 2
-        elli = mpatches.Circle((X, Y), R)
-        elli.set_fill(False)
-        elli.set_color('red')
-        elli.set_picker("true")
-        self.ax.add_patch(elli)
+
+        # set the index of the patch to be added as the maximum of current index +1
+        add_ind = self.data.index.max() + 1
+
+        # generate the circle patch
+        artist = mpatch.Circle((X, Y), R,
+                             fill=False,
+                             color="r",
+                             picker=True, 
+                             url=add_ind)
+        self.ax.add_patch(artist)
         self.canvas.draw()
+
         print('Add an ellipse at (%.1f, %.1f) ...' % (X, Y))
 
-        data = np.array([[X, Y, R]])
-        header = self.data.columns.tolist()
-        
-        addedDataFrame = pd.DataFrame(data=data, columns=header)
-        try:
-            self.addedData = pd.concat([self.addedData, addedDataFrame])
-        except:
-            self.addedData = deletedDataFrame
+        # write new circle data as a new entry in self.data
+        self.data = pd.concat([self.data, pd.DataFrame(data={"x": X, "y": Y, "r": R}, index=[add_ind])])
 
-        self.addedArtist.append(elli)
+        # append the added artist to history_list, in case we want to revert the change
+        self.history_list.append((artist, "add"))
+
+        # set backward button to active
         self.backwardButton.config(state='normal')
+
+        # update data status display
         self.updateStatus()
 
     def backwardButtonCallback(self):
-        if self.mode.get() == 'D':
-            # draw ellipse according to the last row of self.deletedArtist
-            artist = self.deletedArtist.pop()
-            artist.set_visible(True)
-            artist.set_picker(True)
-            self.canvas.draw()       
-            # delete the last row of self.deletedData
-            idx = self.deletedData.last_valid_index()
-            self.deletedData.drop(axis=0, index=idx, inplace=True)
-            # when self.deletedData is empty, set "Backward" button to DISABLED
-            if self.deletedData.empty == True:
-                self.backwardButton.config(state='disabled')
-                # self.deletedData = None
-        if self.mode.get() == 'T':
-            # Delete ellipse according to the last row of self.deletedData
-            artist = self.addedArtist.pop()
-            artist.set_visible(False)
-            artist.set_picker(None)
-            self.canvas.draw()       
-            # delete the last row of self.addedData
-            idx = self.addedData.last_valid_index()
-            # pdb.set_trace()
-            self.addedData.drop(axis=0, index=idx, inplace=True)
-            # when self.deletedData is empty, set "Backward" button to DISABLED
-            if self.addedData.empty == True:
-                self.backwardButton.config(state='disabled')
-                # self.addedData = None
-        self.updateStatus()
+        # pop the most recent change out of the history_list
+        artist, action = self.history_list.pop()
 
-    def colorButtonCallback(self):
-        if self.colorButtonText.get() == 'Color plot':
-            self.colorButtonText.set('Mono plot')
-        else:
-            self.colorButtonText.set('Color plot')
-        self.updateStatus()
+        # if the action is delete, we add this artist back to canvas and data
+        if action == "delete": 
+            # back to canvas
+            self.ax.add_patch(artist)
+            # back to data table
+            deleted = pd.DataFrame(data={"x": artist.center[0],
+                                         "y": artist.center[1],
+                                         "r": artist.get_radius()}, 
+                                   index=[artist.get_url()])
+            self.data = pd.concat([self.data, deleted])
+        # if the action is add, we remove this artist from canvas and data
+        elif action == "add":
+            # remove from canvas
+            artist.remove()
+            # remove from data
+            del_ind = artist.get_url()
+            self.data.drop(index=del_ind, inplace=True)
 
-    def mergeDataButtonCallback(self):
-        if self.deletedData.empty == False:
-            for index, value in self.deletedData.iterrows():                    
-                self.data.drop(index=index, inplace=True)
-            self.deletedData = pd.DataFrame()
-        if self.addedData.empty == False:
-            self.data = pd.concat([self.data, self.addedData])
-            self.addedData = pd.DataFrame()    
-        # self.mode.set('I')
-        # self.modeCallback()
+        self.canvas.draw()
         self.updateStatus()
 
     def saveDataButtonCallback(self):
         if self.data.empty:
             TMB.showerror('Data error', 'No data to save')
             return
-        file = TFD.asksaveasfilename(filetypes=(("CSV files", "*.csv"), ("Excel files", "*.xls;*.xlsx")))
+        file = TFD.asksaveasfilename(filetypes=(("CSV files", "*.csv"),))
         if not file:
             return
-        try:
-            if file.endswith('.csv'):
-                self.data.to_csv(file, index=False)
-            elif file.endswith(('.xls', '.xlsx')):
-                self.data.to_excel(file, index=False)
-        except Exception as e:
-            TMB.showerror('Save error', f"Error saving file: {e}")
+
+        self.data.to_csv(file, index=False)
 
     def saveFigButtonCallback(self):
         file = TFD.asksaveasfilename(filetypes=(("PNG files", "*.png"), ("PDF files", "*.pdf"), ("SVG files", "*.svg")))
@@ -337,14 +335,6 @@ class mplApp(tk.Frame):
         except Exception as e:
             TMB.showerror('Save error', f"Error saving figure: {e}")
 
-    def reloadButtonCallback(self):
-        try:
-            self.imgOpenDialog()
-            self.dataOpenDialog()
-            self.drawData()
-        except Exception as e:
-            TMB.showerror('Reload error', f"Error reloading: {e}")
-
     def mousePosCallback(self, event):
         if event.inaxes != self.ax:
             return
@@ -354,8 +344,8 @@ class mplApp(tk.Frame):
 
     def updateStatus(self):
         self.dataStatStringVar.set(f'Data points: {len(self.data)}')
-        self.deleteTmpStringVar.set(f'Deleted points: {len(self.deletedData)}')
-        self.addTmpStringVar.set(f'Added points: {len(self.addedData)}')
+        self.cacheStringVar.set(f'Cached points: {len(self.history_list)}')
+
 
 root = tk.Tk()
 app = mplApp(master=root)
