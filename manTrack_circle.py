@@ -28,31 +28,17 @@ class mplApp(tk.Frame):
         self.colorButtonText = tk.StringVar()
         self.dataStatStringVar = tk.StringVar()
         self.cacheStringVar = tk.StringVar()
-        # self.deleteTmpStringVar = tk.StringVar()
-        # self.addTmpStringVar = tk.StringVar()        
-        # self.PPUStringVar = tk.StringVar()
-        # self.minorAxisStringVar = tk.StringVar()
-        # self.PPULabelStringVar = tk.StringVar()
-        # self.minorAxisLabelStringVar = tk.StringVar()
-        # self.PPU = 100
-        # self.minorAxis = 10
         self.mousePosStringVar.set(str(self.mousePos[0]) + ', ' + str(self.mousePos[1]))
         self.mode.set('I')
-        # self.colorButtonText.set('Color plot')
         self.workingDir = os.getcwd()
         self.history_list = []
         
         self.dID = -1
         self.tID = -1
-        # self.deletedArtist = []
-        # self.addedArtist = []
-        # self.artistList = []
+
         self.data = pd.DataFrame()
-        # self.addedData = pd.DataFrame()
-        # self.deletedData = pd.DataFrame()
-        # self.PPUStringVar.set(str(self.PPU))
-        # self.minorAxisStringVar.set(str(self.minorAxis))
-        
+        self.tmpArtist = mpatch.Circle((0,0), 0, visible=False, color="g", fill=False)
+
     def create_widgets(self):
         # DATA LOADING buttons
         self.buttonFrame = tk.Frame(self)
@@ -102,15 +88,13 @@ class mplApp(tk.Frame):
         self.dataStatLabel.pack(fill='x')
         self.cacheLabel = tk.Label(self.buttonFrame, textvariable=self.cacheStringVar)
         self.cacheLabel.pack(fill='x')
-        # self.addTmpLabel = tk.Label(self.buttonFrame, textvariable=self.addTmpStringVar)
-        # self.addTmpLabel.pack(fill='x')
         self.updateStatus()
     
     def initCanvas(self):        
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)  # Use matplotlib.backend to generate GUI widget
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side='left')
-        self.pID = self.canvas.mpl_connect('motion_notify_event', self.mousePosCallback)
+        # self.pID = self.canvas.mpl_connect('motion_notify_event', self.mousePosCallback)
     
     """
     Callbacks
@@ -251,11 +235,34 @@ class mplApp(tk.Frame):
         # get the x y data at the click as the first point of the diameter
         self.x1 = event.xdata
         self.y1 = event.ydata
+
+        # set temporary circle to be visible
+        self.tmpArtist.set_visible(True)
+
         # activate the button release event
-        self.releaseID = self.canvas.mpl_connect('button_release_event', self.mouseTrackReleaseCallback)      
-        
+        self.moveID = self.canvas.mpl_connect("motion_notify_event", self.mouseMoveCallback)
+        self.releaseID = self.canvas.mpl_connect('button_release_event', self.mouseTrackReleaseCallback)
+    
+    def mouseMoveCallback(self, event):
+        x2 = event.xdata
+        y2 = event.ydata 
+
+        X = (self.x1 + x2) / 2 
+        Y = (self.y1 + y2) / 2
+        R = ((self.x1 - x2)**2 + (self.y1 - y2)**2)**.5 / 2
+
+        self.tmpArtist.set_center((X, Y))
+        self.tmpArtist.set_radius(R)
+        self.ax.draw_artist(self.tmpArtist)
+        self.canvas.draw()
+
     def mouseTrackReleaseCallback(self, event):
+        self.canvas.mpl_disconnect(self.moveID)
         self.canvas.mpl_disconnect(self.releaseID)
+
+        # set temporary artist invisible
+        self.tmpArtist.set_visible(False)
+
         # get the x y data at the release as the second point of the diameter
         self.x2 = event.xdata
         self.y2 = event.ydata               
@@ -316,6 +323,9 @@ class mplApp(tk.Frame):
         self.canvas.draw()
         self.updateStatus()
 
+        if self.history_list == []: # set backward button to active
+            self.backwardButton.config(state='disabled')
+
     def saveDataButtonCallback(self):
         if self.data.empty:
             TMB.showerror('Data error', 'No data to save')
@@ -338,7 +348,7 @@ class mplApp(tk.Frame):
     def mousePosCallback(self, event):
         if event.inaxes != self.ax:
             return
-        self.mousePos = [event.xdata / self.compressRatio, event.ydata / self.compressRatio]
+        self.mousePos = [event.xdata , event.ydata]
         self.mousePosStringVar.set(f'{self.mousePos[0]:.2f}, {self.mousePos[1]:.2f}')
         self.updateStatus()
 
