@@ -17,6 +17,8 @@ Jun 22, 2024:
 1. remove mode module -- the add/delete behavior can be separated by using different mouse buttons. Since our data management is no longer dependent on the mode, the mode module requires many more redundant operations and should be thus removed. 
 
 2. use blit to make circle preview faster.
+
+3. Fix the bug arising from repeatedly clicking "Draw data".
 """
 
 import tkinter as tk
@@ -31,6 +33,7 @@ import ctypes
 import os
 import numpy as np
 import pandas as pd
+import pdb
 
 class mplApp(tk.Frame):
     def __init__(self, master=None):
@@ -181,8 +184,8 @@ class mplApp(tk.Frame):
         wcanvas = w
         self.compressRatio = 1
         user32 = ctypes.windll.user32
-        wmax = math.floor(0.92 * user32.GetSystemMetrics(0))
-        hmax = math.floor(0.92 * user32.GetSystemMetrics(1))
+        wmax = np.floor(0.92 * user32.GetSystemMetrics(0))
+        hmax = np.floor(0.92 * user32.GetSystemMetrics(1))
         if wcanvas > wmax:
             wcanvas = wmax
             hcanvas = h / w * wcanvas
@@ -208,25 +211,15 @@ class mplApp(tk.Frame):
                 self.data = pd.read_csv(dataDir)
             elif filename.endswith(('.xls', '.xlsx')):
                 self.data = pd.read_excel(dataDir)
-            # self.artistList = []
 
         except Exception as e:
             TMB.showerror('File type error', f"Error reading file: {e}")
-        self.updateStatus()
+        
+        # if there exists any patch, remove it
+        self.ax.patches.clear()
 
-    def drawData(self):
-        if self.data.empty:
-            TMB.showerror('Data error', 'Please load data')
-            return
-        data = self.data
-
-        # if there exists any artist, remove it
-        for artist in self.ax.artists:
-            artist.remove()
-
-        # create artist for all entries in data table
-        # add the artists to canvas
-        for i, row in data.iterrows():
+        # create and add artists to axes
+        for i, row in self.data.iterrows():
             x = row['x']
             y = row['y']
 
@@ -241,10 +234,11 @@ class mplApp(tk.Frame):
             
 
             self.ax.add_patch(patch)
-            # self.artistList.append(patch)
-        self.canvas.draw()
 
-    
+        self.updateStatus()
+
+    def drawData(self):      
+        self.canvas.draw()
 
     def mouseDeleteCallback(self, event):
         """ If an artist is picked with RIGHT (3) click, remove it from both canvas and data table"""
