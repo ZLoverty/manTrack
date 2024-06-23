@@ -19,6 +19,8 @@ Jun 22, 2024:
 2. use blit to make circle preview faster.
 
 3. Fix the bug arising from repeatedly clicking "Draw data".
+
+4. Cross cursor when labeling.
 """
 
 import tkinter as tk
@@ -156,8 +158,7 @@ class mplApp(tk.Frame):
         # tracking on_release event
         self.canvas.mpl_connect('button_release_event', self.mouseTrackReleaseCallback)
 
-        # change cursor
-        # self.canvas.get_tk_widget().config(cursor='')
+        
     
     """
     Callbacks
@@ -285,7 +286,10 @@ class mplApp(tk.Frame):
 
         # create blit background 
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
-    
+
+        # change cursor to cross
+        self.canvas.get_tk_widget().config(cursor='crosshair')
+
     def mouseMoveCallback(self, event):
         """ Preview the circle drawing when LEFT (1) button is pressed. """
 
@@ -366,6 +370,9 @@ class mplApp(tk.Frame):
 
         # set self.press to None to deactivate the on_motion callbacks
         self.press = None
+
+        # change cursor back to normal
+        self.canvas.get_tk_widget().config(cursor='arrow')
 
     def backwardButtonCallback(self):
         # pop the most recent change out of the history_list
