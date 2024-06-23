@@ -1,3 +1,24 @@
+"""
+manTrack_circle.py
+==================
+
+Description
+-----------
+
+A simple python GUI program to for hand labeling of circle objects in images. This program features adding labels by drawing circles at mouse cursor with left button, and deleting labels by right clicking on existing labels. It also features a "undo" button, which reverts undesired edits. It also features loading existing labeling result from .csv files, which allows refining unperfect results from automatic detection algorithm.
+
+The labeling data is a pandas.DataFrame with columns x, y, r. 
+
+Edit
+----
+
+Jun 22, 2024: 
+
+1. remove mode module -- the add/delete behavior can be separated by using different mouse buttons. Since our data management is no longer dependent on the mode, the mode module requires many more redundant operations and should be thus removed. 
+
+2. use blit to make circle preview faster.
+"""
+
 import tkinter as tk
 import tkinter.filedialog as TFD
 import tkinter.messagebox as TMB
@@ -10,95 +31,135 @@ import ctypes
 import os
 import numpy as np
 import pandas as pd
-import math
 
 class mplApp(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
         self.createVars()
         self.create_widgets()
-        
+
     """
     Components
     """
+
     def createVars(self):
         self.mousePos = [0, 0]
         self.mousePosStringVar = tk.StringVar()
-        self.mode = tk.StringVar()
         self.colorButtonText = tk.StringVar()
         self.dataStatStringVar = tk.StringVar()
         self.cacheStringVar = tk.StringVar()
-        self.mousePosStringVar.set(str(self.mousePos[0]) + ', ' + str(self.mousePos[1]))
-        self.mode.set('I')
         self.workingDir = os.getcwd()
         self.history_list = []
-        
-        self.dID = -1
-        self.tID = -1
+        self.press = None
 
         self.data = pd.DataFrame()
-        self.tmpArtist = mpatch.Circle((0,0), 0, visible=False, color="g", fill=False)
+        self.tmpArtist = None
 
     def create_widgets(self):
-        # DATA LOADING buttons
+        
+        # create the main frame for all the buttons
         self.buttonFrame = tk.Frame(self)
         self.buttonFrame.pack(side='left')
+
+        # block title: DATA LOADING buttons
         loadLabel = tk.Label(self.buttonFrame, text='DATA LOADING', font=('Helvetica', 10, 'bold'))
         loadLabel.pack(fill='x')
+
+        # load image button
         self.loadButton = tk.Button(self.buttonFrame, text='Load image', command=self.imgOpenDialog)
         self.loadButton.pack(fill='x')
+
+        # load data button
         self.loadDataButton = tk.Button(self.buttonFrame, text='Load data', command=self.dataOpenDialog)
         self.loadDataButton.pack(fill='x')
+
+        # draw data button
         self.drawDataButton = tk.Button(self.buttonFrame, text='Draw data', command=self.drawData)
         self.drawDataButton.pack(fill='x')
+        
+        
+        # DATA SAVING buttons block
+
+        # vertical spacer
         spaceFrame1 = tk.Frame(self.buttonFrame, height=30)
         spaceFrame1.pack()
-        
-        # DATA SAVING buttons
+
+        # block title: data saving 
         saveLabel = tk.Label(self.buttonFrame, text='DATA SAVING', font=('Helvetica', 10, 'bold'))
         saveLabel.pack(fill='x')
+
+        # save data button
         self.saveDataButton = tk.Button(self.buttonFrame, text='Save data', command=self.saveDataButtonCallback)
         self.saveDataButton.pack(fill='x')
+
+        # save figure button
         self.saveFigButton = tk.Button(self.buttonFrame, text='Save figure', command=self.saveFigButtonCallback)
         self.saveFigButton.pack(fill='x')
         
-        # MODE buttons
-        spaceFrame2 = tk.Frame(self.buttonFrame, height=30)
-        spaceFrame2.pack()  
-        modeLabel = tk.Label(self.buttonFrame, text='MODE', font=('Helvetica', 10, 'bold'))
-        modeLabel.pack(fill='x')
-        MODES = [('Idle mode', 'I'), ('Delete mode', 'D'), ('Track mode', 'T')]
-        for text, mode in MODES:
-            rb = tk.Radiobutton(self.buttonFrame, text=text, variable=self.mode, value=mode, indicatoron=0, command=self.modeCallback)
-            rb.pack(fill='x')
+        
+        # Utility buttons block
+
+        # vertical spacer
         spaceFrame2 = tk.Frame(self.buttonFrame, height=30)
         spaceFrame2.pack()
-                 
+
+        # title of the block: utilities
+        saveLabel = tk.Label(self.buttonFrame, text='UTILITIES', font=('Helvetica', 10, 'bold'))
+        saveLabel.pack(fill='x')
+
+        # backward button
         self.backwardButton = tk.Button(self.buttonFrame, text='Backward', state='disabled', command=self.backwardButtonCallback)
         self.backwardButton.pack(fill='x')       
         
         # Status block, tracking status of background data
+
+        # vertical spacer
         spaceFrame2 = tk.Frame(self.buttonFrame, height=30)
         spaceFrame2.pack()
-        statLabel = tk.Label(self.buttonFrame, text='STATUS BLOCK', font=('Helvetica', 10, 'bold'))
+
+        # block title: status
+        statLabel = tk.Label(self.buttonFrame, text='STATUS', font=('Helvetica', 10, 'bold'))
         statLabel.pack(fill='x')
-        self.mousePositionLabel = tk.Label(self.buttonFrame, textvariable=self.mousePosStringVar)
-        self.mousePositionLabel.pack(fill='x') 
+
+        # number of data points label
         self.dataStatLabel = tk.Label(self.buttonFrame, textvariable=self.dataStatStringVar)
         self.dataStatLabel.pack(fill='x')
+
+        # number of cached points label
         self.cacheLabel = tk.Label(self.buttonFrame, textvariable=self.cacheStringVar)
         self.cacheLabel.pack(fill='x')
+
+        # 
         self.updateStatus()
     
-    def initCanvas(self):        
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self)  # Use matplotlib.backend to generate GUI widget
+    def initCanvas(self):
+        # Use matplotlib.backend to generate GUI widget
+        # initialize the canvas with self.fig
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side='left')
-        # self.pID = self.canvas.mpl_connect('motion_notify_event', self.mousePosCallback)
+
+        # connect all the mouse events handler 
+
+        # delete on_pick event
+        self.canvas.mpl_connect('pick_event', self.mouseDeleteCallback)
+
+        # tracking on_press event
+        self.canvas.mpl_connect('button_press_event', self.mouseTrackPressCallback)
+
+        # tracking on_motion event
+        self.canvas.mpl_connect("motion_notify_event", self.mouseMoveCallback)
+        
+        # tracking on_release event
+        self.canvas.mpl_connect('button_release_event', self.mouseTrackReleaseCallback)
+
+        # change cursor
+        # self.canvas.get_tk_widget().config(cursor='')
     
     """
     Callbacks
     """
+
     def imgOpenDialog(self):
         try:
             self.canvas.get_tk_widget().destroy()
@@ -183,28 +244,15 @@ class mplApp(tk.Frame):
             # self.artistList.append(patch)
         self.canvas.draw()
 
-    def modeCallback(self):
-        mode = self.mode.get()
-        if mode == 'D': self.deleteMode()
-        elif mode == 'T': self.trackMode()
-        else: self.idleMode()
-            
-    def idleMode(self):
-        self.canvas.get_tk_widget().config(cursor='')
-        self.canvas.mpl_disconnect(self.dID)
-        self.canvas.mpl_disconnect(self.tID)
-
-    def trackMode(self):
-        self.canvas.get_tk_widget().config(cursor='tcross')
-        self.tID = self.canvas.mpl_connect('button_press_event', self.mouseTrackPressCallback)
-        self.canvas.mpl_disconnect(self.dID)
-        
-    def deleteMode(self):
-        self.canvas.get_tk_widget().config(cursor='cross')
-        self.dID = self.canvas.mpl_connect('pick_event', self.mouseDeleteCallback)
-        self.canvas.mpl_disconnect(self.tID)
+    
 
     def mouseDeleteCallback(self, event):
+        """ If an artist is picked with RIGHT (3) click, remove it from both canvas and data table"""
+
+        # only proceed if right button is pressed
+        if event.mouseevent.button != 3:
+            return
+
         # get picked artist
         artist = event.artist
 
@@ -232,62 +280,86 @@ class mplApp(tk.Frame):
         self.updateStatus()
 
     def mouseTrackPressCallback(self, event):
+        """ Record the coords of LEFT (1) button press. """
+
+        # only proceed if left button is pressed
+        if event.button != 1:
+            return
+
         # get the x y data at the click as the first point of the diameter
-        self.x1 = event.xdata
-        self.y1 = event.ydata
+        self.press = event.xdata, event.ydata
 
-        # set temporary circle to be visible
-        self.tmpArtist.set_visible(True)
-
-        # activate the button release event
-        self.moveID = self.canvas.mpl_connect("motion_notify_event", self.mouseMoveCallback)
-        self.releaseID = self.canvas.mpl_connect('button_release_event', self.mouseTrackReleaseCallback)
+        # create blit background 
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
     
     def mouseMoveCallback(self, event):
-        x2 = event.xdata
-        y2 = event.ydata 
+        """ Preview the circle drawing when LEFT (1) button is pressed. """
 
-        X = (self.x1 + x2) / 2 
-        Y = (self.y1 + y2) / 2
-        R = ((self.x1 - x2)**2 + (self.y1 - y2)**2)**.5 / 2
+        # proceed only if left button has been pressed 
+        if self.press == None or event.button != 1:
+            return
+        
+        # read starting and ending coords
+        x1, y1 = self.press
+        x2, y2 = event.xdata, event.ydata
 
-        self.tmpArtist.set_center((X, Y))
-        self.tmpArtist.set_radius(R)
-        self.ax.draw_artist(self.tmpArtist)
+        # calculate circle center and radius
+        x = (x1 + x2) / 2 
+        y = (y1 + y2) / 2
+        r = ((x1 - x2)**2 + (y1 - y2)**2)**.5 / 2
+
+        # when moving mouse, a new circle will be created, so the old one should be removed
+        if self.tmpArtist:
+            self.tmpArtist.remove()
+
+        # restore blit background
+        self.canvas.restore_region(self.background)
+        
+        # draw the temporary circle
+        self.tmpArtist = mpatch.Circle((x, y), r, fill=False, color="g")
+        self.ax.add_patch(self.tmpArtist)
+
         self.canvas.draw()
 
     def mouseTrackReleaseCallback(self, event):
-        self.canvas.mpl_disconnect(self.moveID)
-        self.canvas.mpl_disconnect(self.releaseID)
+        """ Draw circle when LEFT (1) button is released. """
 
-        # set temporary artist invisible
-        self.tmpArtist.set_visible(False)
+        # only proceed when left button is released
+        if event.button != 1:
+            return
 
-        # get the x y data at the release as the second point of the diameter
-        self.x2 = event.xdata
-        self.y2 = event.ydata               
-
-        # compute center location and radius
-        X = (self.x1 + self.x2) / 2 
-        Y = (self.y1 + self.y2) / 2
-        R = ((self.x1 - self.x2)**2+(self.y1 - self.y2)**2)**.5 / 2
-
-        # set the index of the patch to be added as the maximum of current index +1
-        add_ind = self.data.index.max() + 1
+        # set the index of the new patch
+        # if self.data is empty, set the index as 0
+        # otherwise, set the index as the maximum of current index +1
+        if self.data.index.empty:
+            add_ind = 0
+        else:
+            add_ind = self.data.index.max() + 1
 
         # generate the circle patch
-        artist = mpatch.Circle((X, Y), R,
-                             fill=False,
-                             color="r",
-                             picker=True, 
-                             url=add_ind)
+        artist = self.tmpArtist
+
+        # make the final artist pickable
+        artist.set_picker(True)
+
+        # assign a url to this artist as add_ind
+        artist.set_url(add_ind)
+
+        # remove the temporary artist
+        self.tmpArtist.remove()
+        self.tmpArtist = None
+
         self.ax.add_patch(artist)
         self.canvas.draw()
 
-        print('Add an ellipse at (%.1f, %.1f) ...' % (X, Y))
+        # get artist center and radius
+        x, y, r = artist.center[0], artist.center[1], artist.radius
+
+        # print action
+        print("Add an ellipse at ({0:.1f}, {1:.1f})".format(x, y))
 
         # write new circle data as a new entry in self.data
-        self.data = pd.concat([self.data, pd.DataFrame(data={"x": X, "y": Y, "r": R}, index=[add_ind])])
+        self.data = pd.concat([self.data, pd.DataFrame(data={"x": x, "y": y, "r": r}, index=[add_ind])])
 
         # append the added artist to history_list, in case we want to revert the change
         self.history_list.append((artist, "add"))
@@ -297,6 +369,9 @@ class mplApp(tk.Frame):
 
         # update data status display
         self.updateStatus()
+
+        # set self.press to None to deactivate the on_motion callbacks
+        self.press = None
 
     def backwardButtonCallback(self):
         # pop the most recent change out of the history_list
