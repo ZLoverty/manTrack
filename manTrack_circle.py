@@ -217,7 +217,8 @@ class mplApp(tk.Frame):
             TMB.showerror('File type error', f"Error reading file: {e}")
         
         # if there exists any patch, remove it
-        self.ax.patches.clear()
+        for patch in self.ax.patches:
+            patch.remove()
 
         # create and add artists to axes
         for i, row in self.data.iterrows():
