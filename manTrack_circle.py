@@ -21,6 +21,16 @@ Jun 22, 2024:
 3. Fix the bug arising from repeatedly clicking "Draw data".
 
 4. Cross cursor when labeling.
+
+Jun 23, 2024:
+
+1. Enable zooming and panning with middle button.
+
+2. Reorganize the mouse button callbacks: e.g. all the presses can be grouped in the same callback function on_press.
+
+3. Enable keyboard shortcuts for undo and reset zoom.
+
+4. 
 """
 
 import tkinter as tk
@@ -43,6 +53,8 @@ class mplApp(tk.Frame):
         self.createVars()
         self.create_widgets()
 
+        
+
     """
     Components
     """
@@ -59,6 +71,7 @@ class mplApp(tk.Frame):
 
         self.data = pd.DataFrame()
         self.tmpArtist = None
+        self.pan_start = None
 
     def create_widgets(self):
         
@@ -112,9 +125,13 @@ class mplApp(tk.Frame):
         saveLabel = tk.Label(self.buttonFrame, text='UTILITIES', font=('Helvetica', 10, 'bold'))
         saveLabel.pack(fill='x')
 
-        # backward button
-        self.backwardButton = tk.Button(self.buttonFrame, text='Backward', state='disabled', command=self.backwardButtonCallback)
-        self.backwardButton.pack(fill='x')       
+        # undo button
+        self.backwardButton = tk.Button(self.buttonFrame, text='Undo (\u232B)', state='disabled', command=self.backwardButtonCallback)
+        self.backwardButton.pack(fill='x')
+
+        # reset zoom button
+        self.resetButton = tk.Button(self.buttonFrame, text='Reset zoom (\u2423)', command=self.resetButtonCallback)
+        self.resetButton.pack(fill='x')  
         
         # Status block, tracking status of background data
 
@@ -147,19 +164,25 @@ class mplApp(tk.Frame):
         # connect all the mouse events handler 
 
         # delete on_pick event
-        self.canvas.mpl_connect('pick_event', self.mouseDeleteCallback)
+        self.canvas.mpl_connect('pick_event', self.on_pick)
 
         # tracking on_press event
-        self.canvas.mpl_connect('button_press_event', self.mouseTrackPressCallback)
+        self.canvas.mpl_connect('button_press_event', self.on_press)
 
         # tracking on_motion event
-        self.canvas.mpl_connect("motion_notify_event", self.mouseMoveCallback)
+        self.canvas.mpl_connect("motion_notify_event", self.on_motion)
         
         # tracking on_release event
-        self.canvas.mpl_connect('button_release_event', self.mouseTrackReleaseCallback)
+        self.canvas.mpl_connect('button_release_event', self.on_release)
 
-        
+        # scrolling zoom event
+        self.canvas.mpl_connect('scroll_event', self.on_scroll)
+
+        # key press event
+        self.canvas.mpl_connect("key_press_event", self.on_key)
     
+        # create blit background 
+        self.background = self.canvas.copy_from_bbox(self.ax.bbox)
     """
     Callbacks
     """
@@ -197,7 +220,13 @@ class mplApp(tk.Frame):
             self.compressRatio = hmax / h
         self.fig = Figure(figsize=(wcanvas / dpi, hcanvas / dpi), dpi=dpi)
         self.ax = self.fig.add_axes([0, 0, 1, 1])
-        self.ax.imshow(img, cmap='gray')
+        self.axesImage = self.ax.imshow(img, cmap='gray')
+        
+        # get ori lims for resetting
+        self.ori_xlim = self.ax.get_xlim()
+        self.ori_ylim = self.ax.get_ylim()
+
+        # initialize canvas and update status block
         self.initCanvas()
         self.updateStatus()
         
@@ -241,139 +270,211 @@ class mplApp(tk.Frame):
 
     def drawData(self):      
         self.canvas.draw()
-
-    def mouseDeleteCallback(self, event):
-        """ If an artist is picked with RIGHT (3) click, remove it from both canvas and data table"""
-
-        # only proceed if right button is pressed
-        if event.mouseevent.button != 3:
-            return
-
-        # get picked artist
-        artist = event.artist
-
-        # delete from canvas
-        artist.remove()
-        
-        # read artist info and print to stdout
-        xy = artist.center
-        print('Delete an ellipse at (%.1f, %.1f) ...' % (xy[0], xy[1]))      
-
-        # get the index of entry to delete
-        del_ind = artist.get_url()
-
-        # delete the chosen entry
-        self.data.drop(index=del_ind, inplace=True)
-
-        # add the deleted artist to history_list, in case we want to revert the edit
-        self.history_list.append((artist, "delete"))
-
-        # set backward button to active
-        self.backwardButton.config(state='normal')
-
-        # update canvas and data status display
-        self.canvas.draw()
-        self.updateStatus()
-
-    def mouseTrackPressCallback(self, event):
-        """ Record the coords of LEFT (1) button press. """
-
-        # only proceed if left button is pressed
-        if event.button != 1:
-            return
-
-        # get the x y data at the click as the first point of the diameter
-        self.press = event.xdata, event.ydata
-
-        # create blit background 
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
 
-        # change cursor to cross
-        self.canvas.get_tk_widget().config(cursor='crosshair')
+    def on_press(self, event):
+        """ If an artist is picked with RIGHT (3) click, remove it from both canvas and data table"""
 
-    def mouseMoveCallback(self, event):
+        # if left button is pressed, start the hand labeling circle drawing
+        if event.button == 1:
+
+            # get the x y data at the click as the first point of the diameter
+            self.press = event.xdata, event.ydata
+
+            # change cursor to cross
+            self.canvas.get_tk_widget().config(cursor='crosshair')
+
+            # cache background
+            self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+
+        # if middle mouse button is pressed, start the panning mode by setting self.pan_start
+        elif event.button == 2:
+
+            # set pan_start
+            self.pan_start = (event.xdata, event.ydata)
+
+            # change cursor to hand
+            self.canvas.set_cursor('hand')
+
+
+    def on_pick(self, event):
+        """ PickEvent callback, remove patch picked with right click. """
+
+        # if right button is pressed, remove the picked patch
+        if event.mouseevent.button == 3:
+
+            # get picked artist
+            artist = event.artist
+
+            # delete from canvas
+            artist.remove()
+            
+            # read artist info and print to stdout
+            xy = artist.center
+            print('Delete an ellipse at (%.1f, %.1f) ...' % (xy[0], xy[1]))      
+
+            # get the index of entry to delete
+            del_ind = artist.get_url()
+
+            # delete the chosen entry
+            self.data.drop(index=del_ind, inplace=True)
+
+            # add the deleted artist to history_list, in case we want to revert the edit
+            self.history_list.append((artist, "delete"))
+
+            # set backward button to active
+            self.backwardButton.config(state='normal')
+
+            # update canvas and data status display
+            self.canvas.draw()
+            self.updateStatus()        
+
+    def on_motion(self, event):
         """ Preview the circle drawing when LEFT (1) button is pressed. """
 
         # proceed only if left button has been pressed 
-        if self.press == None or event.button != 1:
-            return
+        if self.press is not None and event.button == 1 and event.inaxes == self.ax:   
+            
+            # restore background
+            self.canvas.restore_region(self.background)         
         
-        # read starting and ending coords
-        x1, y1 = self.press
-        x2, y2 = event.xdata, event.ydata
+            # read starting and ending coords
+            x1, y1 = self.press
+            x2, y2 = event.xdata, event.ydata
 
-        # calculate circle center and radius
-        x = (x1 + x2) / 2 
-        y = (y1 + y2) / 2
-        r = ((x1 - x2)**2 + (y1 - y2)**2)**.5 / 2
+            # calculate circle center and radius
+            x = (x1 + x2) / 2 
+            y = (y1 + y2) / 2
+            r = ((x1 - x2)**2 + (y1 - y2)**2)**.5 / 2
 
-        # when moving mouse, a new circle will be created, so the old one should be removed
-        if self.tmpArtist:
-            self.tmpArtist.remove()
+            # when moving mouse, a new circle will be created, so the old one should be removed
+            if self.tmpArtist:
+                self.tmpArtist.remove()
+            
+            # draw the temporary circle
+            self.tmpArtist = mpatch.Circle((x, y), r, fill=False, color="g")
+            self.ax.add_patch(self.tmpArtist)
+            self.ax.draw_artist(self.tmpArtist)
 
-        # restore blit background
-        self.canvas.restore_region(self.background)
+            self.canvas.blit(self.ax.bbox)
         
-        # draw the temporary circle
-        self.tmpArtist = mpatch.Circle((x, y), r, fill=False, color="g")
-        self.ax.add_patch(self.tmpArtist)
+        elif self.pan_start is not None and event.inaxes == self.ax:
+            
+            # restore background
+            # self.canvas.restore_region(self.background)   
 
-        self.canvas.draw()
+            # set new axis lims
+            dx = event.xdata - self.pan_start[0]
+            dy = event.ydata - self.pan_start[1]
+            cur_xlim = self.ax.get_xlim()
+            cur_ylim = self.ax.get_ylim()
 
-    def mouseTrackReleaseCallback(self, event):
+            self.ax.set_xlim(cur_xlim[0] - dx, cur_xlim[1] - dx)
+            self.ax.set_ylim(cur_ylim[0] - dy, cur_ylim[1] - dy)
+
+            self.canvas.draw_idle()
+        
+    def on_release(self, event):
         """ Draw circle when LEFT (1) button is released. """
 
         # only proceed when left button is released
-        if event.button != 1:
-            return
+        if event.button == 1:
+            # set the index of the new patch: if self.data is empty, set the index as 0; otherwise, set the index as the maximum of current index +1.
+            if self.data.index.empty:
+                add_ind = 0
+            else:
+                add_ind = self.data.index.max() + 1
 
-        # set the index of the new patch
-        # if self.data is empty, set the index as 0
-        # otherwise, set the index as the maximum of current index +1
-        if self.data.index.empty:
-            add_ind = 0
-        else:
-            add_ind = self.data.index.max() + 1
+            # generate the circle patch
+            artist = self.tmpArtist
 
-        # generate the circle patch
-        artist = self.tmpArtist
+            # make the final artist pickable
+            artist.set_picker(True)
 
-        # make the final artist pickable
-        artist.set_picker(True)
+            # assign a url to this artist as add_ind
+            artist.set_url(add_ind)
 
-        # assign a url to this artist as add_ind
-        artist.set_url(add_ind)
+            # remove the temporary artist
+            self.tmpArtist.remove()
+            self.tmpArtist = None
 
-        # remove the temporary artist
-        self.tmpArtist.remove()
-        self.tmpArtist = None
+            # draw new patch
+            self.ax.add_patch(artist)
+            
+            # get artist center and radius
+            x, y, r = artist.center[0], artist.center[1], artist.radius
 
-        self.ax.add_patch(artist)
-        self.canvas.draw()
+            # print action
+            print("Add an ellipse at ({0:.1f}, {1:.1f})".format(x, y))
 
-        # get artist center and radius
-        x, y, r = artist.center[0], artist.center[1], artist.radius
+            # write new circle data as a new entry in self.data
+            self.data = pd.concat([self.data, pd.DataFrame(data={"x": x, "y": y, "r": r}, index=[add_ind])])
 
-        # print action
-        print("Add an ellipse at ({0:.1f}, {1:.1f})".format(x, y))
+            # append the added artist to history_list, in case we want to revert the change
+            self.history_list.append((artist, "add"))
 
-        # write new circle data as a new entry in self.data
-        self.data = pd.concat([self.data, pd.DataFrame(data={"x": x, "y": y, "r": r}, index=[add_ind])])
+            # set backward button to active
+            self.backwardButton.config(state='normal')        
 
-        # append the added artist to history_list, in case we want to revert the change
-        self.history_list.append((artist, "add"))
+            # set self.press to None to deactivate the on_motion callbacks
+            self.press = None
 
-        # set backward button to active
-        self.backwardButton.config(state='normal')
+            # update canvas
+            self.canvas.draw_idle()
+     
+        # if middle button is release, stop panning by setting self.pan_start as None
+        elif event.button == 2:
+            self.pan_start = None
+
+            # update canvas
+            self.canvas.draw_idle()
+
+        # change cursor back to normal
+        self.canvas.get_tk_widget().config(cursor='arrow')
 
         # update data status display
         self.updateStatus()
 
-        # set self.press to None to deactivate the on_motion callbacks
-        self.press = None
+    def on_scroll(self, event):
+        """ Zoom in and zoom out with scrolling. """
 
-        # change cursor back to normal
-        self.canvas.get_tk_widget().config(cursor='arrow')
+        base_scale = 1.1
+        cur_xlim = self.ax.get_xlim()
+        cur_ylim = self.ax.get_ylim()
+
+        xdata = event.xdata  # get event x location
+        ydata = event.ydata  # get event y location
+
+        if event.button == 'up':
+            # deal with zoom in
+            scale_factor = 1 / base_scale
+        elif event.button == 'down':
+            # deal with zoom out
+            scale_factor = base_scale
+        else:
+            # deal with something that should never happen
+            scale_factor = 1
+
+        new_width = (cur_xlim[1] - cur_xlim[0]) * scale_factor
+        new_height = (cur_ylim[1] - cur_ylim[0]) * scale_factor
+
+        relx = (cur_xlim[1] - xdata) / (cur_xlim[1] - cur_xlim[0])
+        rely = (cur_ylim[1] - ydata) / (cur_ylim[1] - cur_ylim[0])
+
+        self.ax.set_xlim([xdata - new_width * (1 - relx), xdata + new_width * (relx)])
+        self.ax.set_ylim([ydata - new_height * (1 - rely), ydata + new_height * (rely)])
+
+        # self.ax.draw_artist(self.axesImage)
+        # for patch in self.ax.patches:
+        #     self.ax.draw_artist(patch)
+        
+        self.canvas.draw_idle()
+
+    def resetButtonCallback(self):
+        """ Reset the zoom to original values. Show whole image. """
+        self.ax.set_xlim(self.ori_xlim)
+        self.ax.set_ylim(self.ori_ylim)
+        self.canvas.draw()
 
     def backwardButtonCallback(self):
         # pop the most recent change out of the history_list
@@ -389,6 +490,7 @@ class mplApp(tk.Frame):
                                          "r": artist.get_radius()}, 
                                    index=[artist.get_url()])
             self.data = pd.concat([self.data, deleted])
+
         # if the action is add, we remove this artist from canvas and data
         elif action == "add":
             # remove from canvas
@@ -397,6 +499,7 @@ class mplApp(tk.Frame):
             del_ind = artist.get_url()
             self.data.drop(index=del_ind, inplace=True)
 
+        # update canvas and status block
         self.canvas.draw()
         self.updateStatus()
 
@@ -422,16 +525,18 @@ class mplApp(tk.Frame):
         except Exception as e:
             TMB.showerror('Save error', f"Error saving figure: {e}")
 
-    def mousePosCallback(self, event):
-        if event.inaxes != self.ax:
-            return
-        self.mousePos = [event.xdata , event.ydata]
-        self.mousePosStringVar.set(f'{self.mousePos[0]:.2f}, {self.mousePos[1]:.2f}')
-        self.updateStatus()
+    
 
     def updateStatus(self):
         self.dataStatStringVar.set(f'Data points: {len(self.data)}')
         self.cacheStringVar.set(f'Cached points: {len(self.history_list)}')
+
+    def on_key(self, event):
+        """ Keyboard shortcuts for undo (backspace) and reset zoom (space bar). """
+        if event.key == "backspace":
+            self.backwardButtonCallback()
+        elif event.key == " ":
+            self.resetButtonCallback()
 
 
 root = tk.Tk()
