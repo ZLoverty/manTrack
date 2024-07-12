@@ -155,13 +155,15 @@ class mplApp(tk.Frame):
         self.cacheLabel.pack(fill='x')
 
         # 
+        self.initCanvas()
         self.updateStatus()
     
     def initCanvas(self):
         # Use matplotlib.backend to generate GUI widget
         # initialize the canvas with self.fig
+        self.fig = Figure(figsize=(8,6), dpi=200)
+        self.ax = self.fig.add_subplot(111)
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
-        self.canvas.draw()
         self.canvas.get_tk_widget().pack(side='left', fill='both', expand=True)
 
         # connect all the mouse events handler 
@@ -187,31 +189,13 @@ class mplApp(tk.Frame):
         # create blit background 
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
 
-        # Adjust canvas size to fit image dimensions
-        self.resizeCanvas()
-
-    def resizeCanvas(self):
-        # Get current size of the canvas widget
-        width = self.canvas.get_tk_widget().winfo_width()
-        height = self.canvas.get_tk_widget().winfo_height()
-        
-        # Update figure size to fit canvas dimensions
-        self.fig.set_size_inches(width / self.fig.dpi, height / self.fig.dpi)
-        
-        # Redraw canvas and image
-        self.canvas.draw()
-        self.canvas.flush_events()  # Ensure the canvas updates immediately
     
     """
     Callbacks
     """
 
     def imgOpenDialog(self):
-        # Destroy existing canvas if it exists
-        try:
-            self.canvas.get_tk_widget().destroy()
-        except AttributeError:
-            pass
+      
 
         # Open file dialog and get image path
         img_path = TFD.askopenfilename(filetypes=[("TIFF files", "*.tif")])
@@ -228,29 +212,15 @@ class mplApp(tk.Frame):
         # Read image
         img = io.imread(img_path)
         self.img = img
-        h, w = img.shape[-2:]
-        dpi = 100
-
-        # Calculate canvas size
-        user32 = ctypes.windll.user32
-        screen_w = np.floor(0.92 * user32.GetSystemMetrics(0))
-        screen_h = np.floor(0.92 * user32.GetSystemMetrics(1))
-
-        self.compressRatio = min(screen_w / w, screen_h / h, 1)
-        wcanvas = w * self.compressRatio
-        hcanvas = h * self.compressRatio
-
-        # Create and configure figure
-        self.fig = Figure(figsize=(wcanvas / dpi, hcanvas / dpi), dpi=dpi)
-        self.ax = self.fig.add_axes([0, 0, 1, 1])
-        self.axesImage = self.ax.imshow(img, cmap='gray')
+        self.ax.imshow(img, cmap='gray')
+        self.ax.axis("off")
 
         # Get original limits for resetting
         self.ori_xlim = self.ax.get_xlim()
         self.ori_ylim = self.ax.get_ylim()
 
         # Initialize canvas and update status block
-        self.initCanvas()
+        self.canvas.draw()
         self.updateStatus()
         
     def dataOpenDialog(self):
