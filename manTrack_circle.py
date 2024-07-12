@@ -37,7 +37,7 @@ import tkinter as tk
 import tkinter.filedialog as TFD
 import tkinter.messagebox as TMB
 from matplotlib.figure import Figure
-from matplotlib.image import imread
+from skimage import io
 from matplotlib import colors
 import matplotlib.patches as mpatch
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -46,6 +46,9 @@ import os
 import numpy as np
 import pandas as pd
 import pdb
+import matplotlib
+matplotlib.use('TkAgg')
+from pathlib import Path
 
 class mplApp(tk.Frame):
     def __init__(self, master=None):
@@ -188,45 +191,49 @@ class mplApp(tk.Frame):
     """
 
     def imgOpenDialog(self):
+        # Destroy existing canvas if it exists
         try:
             self.canvas.get_tk_widget().destroy()
         except AttributeError:
             pass
-        imgDir = TFD.askopenfilename()
-        if not imgDir:
+
+        # Open file dialog and get image path
+        img_path = TFD.askopenfilename(filetypes=[("TIFF files", "*.tif")])
+        if not img_path:  # If no file is selected
             return
-        folder, filename = os.path.split(imgDir)
-        if not filename.endswith('.tif'):
+
+        img_path = Path(img_path)
+        if img_path.suffix.lower() != '.tif':
             TMB.showerror('File type error', 'Please open *.tif file')
             return
-        self.workingDir = folder
-        img = imread(imgDir)        
+
+        self.workingDir = img_path.parent
+
+        # Read image
+        img = io.imread(img_path)
         self.img = img
         h, w = img.shape[-2:]
         dpi = 100
-        hcanvas = h
-        wcanvas = w
-        self.compressRatio = 1
+
+        # Calculate canvas size
         user32 = ctypes.windll.user32
-        wmax = np.floor(0.92 * user32.GetSystemMetrics(0))
-        hmax = np.floor(0.92 * user32.GetSystemMetrics(1))
-        if wcanvas > wmax:
-            wcanvas = wmax
-            hcanvas = h / w * wcanvas
-            self.compressRatio = wmax / w
-        if hcanvas > hmax:
-            hcanvas = hmax
-            wcanvas = w / h * hcanvas
-            self.compressRatio = hmax / h
+        screen_w = np.floor(0.92 * user32.GetSystemMetrics(0))
+        screen_h = np.floor(0.92 * user32.GetSystemMetrics(1))
+
+        self.compressRatio = min(screen_w / w, screen_h / h, 1)
+        wcanvas = w * self.compressRatio
+        hcanvas = h * self.compressRatio
+
+        # Create and configure figure
         self.fig = Figure(figsize=(wcanvas / dpi, hcanvas / dpi), dpi=dpi)
         self.ax = self.fig.add_axes([0, 0, 1, 1])
         self.axesImage = self.ax.imshow(img, cmap='gray')
-        
-        # get ori lims for resetting
+
+        # Get original limits for resetting
         self.ori_xlim = self.ax.get_xlim()
         self.ori_ylim = self.ax.get_ylim()
 
-        # initialize canvas and update status block
+        # Initialize canvas and update status block
         self.initCanvas()
         self.updateStatus()
         
