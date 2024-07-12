@@ -162,7 +162,7 @@ class mplApp(tk.Frame):
         # initialize the canvas with self.fig
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.draw()
-        self.canvas.get_tk_widget().pack(side='left')
+        self.canvas.get_tk_widget().pack(side='left', fill='both', expand=True)
 
         # connect all the mouse events handler 
 
