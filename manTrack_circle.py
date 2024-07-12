@@ -30,7 +30,9 @@ Jun 23, 2024:
 
 3. Enable keyboard shortcuts for undo and reset zoom.
 
-4. 
+July 12, 2024:
+
+1. Load canvas and axes on start to avoid error.
 """
 
 import tkinter as tk
@@ -55,8 +57,6 @@ class mplApp(tk.Frame):
         super().__init__(master)
         self.createVars()
         self.create_widgets()
-
-        
 
     """
     Components
@@ -196,7 +196,6 @@ class mplApp(tk.Frame):
 
     def imgOpenDialog(self):
       
-
         # Open file dialog and get image path
         img_path = TFD.askopenfilename(filetypes=[("TIFF files", "*.tif")])
         if not img_path:  # If no file is selected
