@@ -186,6 +186,22 @@ class mplApp(tk.Frame):
     
         # create blit background 
         self.background = self.canvas.copy_from_bbox(self.ax.bbox)
+
+        # Adjust canvas size to fit image dimensions
+        self.resizeCanvas()
+
+    def resizeCanvas(self):
+        # Get current size of the canvas widget
+        width = self.canvas.get_tk_widget().winfo_width()
+        height = self.canvas.get_tk_widget().winfo_height()
+        
+        # Update figure size to fit canvas dimensions
+        self.fig.set_size_inches(width / self.fig.dpi, height / self.fig.dpi)
+        
+        # Redraw canvas and image
+        self.canvas.draw()
+        self.canvas.flush_events()  # Ensure the canvas updates immediately
+    
     """
     Callbacks
     """
