@@ -286,7 +286,7 @@ class mplApp(tk.Frame):
             self.pan_start = (event.xdata, event.ydata)
 
             # change cursor to hand
-            self.canvas.set_cursor('hand')
+            self.canvas.get_tk_widget().config(cursor='hand2')
 
 
     def on_pick(self, event):
@@ -368,64 +368,64 @@ class mplApp(tk.Frame):
         
     def on_release(self, event):
         """ Draw circle when LEFT (1) button is released. """
+        if self.event_in_axes(event):
+            # only proceed when left button is released
+            if event.button == 1:
+                # set the index of the new patch: if self.data is empty, set the index as 0; otherwise, set the index as the maximum of current index +1.
+                if self.data.index.empty:
+                    add_ind = 0
+                else:
+                    add_ind = self.data.index.max() + 1
 
-        # only proceed when left button is released
-        if event.button == 1:
-            # set the index of the new patch: if self.data is empty, set the index as 0; otherwise, set the index as the maximum of current index +1.
-            if self.data.index.empty:
-                add_ind = 0
-            else:
-                add_ind = self.data.index.max() + 1
+                # generate the circle patch
+                artist = self.tmpArtist
 
-            # generate the circle patch
-            artist = self.tmpArtist
+                # make the final artist pickable
+                artist.set_picker(True)
 
-            # make the final artist pickable
-            artist.set_picker(True)
+                # assign a url to this artist as add_ind
+                artist.set_url(add_ind)
 
-            # assign a url to this artist as add_ind
-            artist.set_url(add_ind)
+                # remove the temporary artist
+                self.tmpArtist.remove()
+                self.tmpArtist = None
 
-            # remove the temporary artist
-            self.tmpArtist.remove()
-            self.tmpArtist = None
+                # draw new patch
+                self.ax.add_patch(artist)
+                
+                # get artist center and radius
+                x, y, r = artist.center[0], artist.center[1], artist.radius
 
-            # draw new patch
-            self.ax.add_patch(artist)
-            
-            # get artist center and radius
-            x, y, r = artist.center[0], artist.center[1], artist.radius
+                # print action
+                print("Add an ellipse at ({0:.1f}, {1:.1f})".format(x, y))
 
-            # print action
-            print("Add an ellipse at ({0:.1f}, {1:.1f})".format(x, y))
+                # write new circle data as a new entry in self.data
+                self.data = pd.concat([self.data, pd.DataFrame(data={"x": x, "y": y, "r": r}, index=[add_ind])])
 
-            # write new circle data as a new entry in self.data
-            self.data = pd.concat([self.data, pd.DataFrame(data={"x": x, "y": y, "r": r}, index=[add_ind])])
+                # append the added artist to history_list, in case we want to revert the change
+                self.history_list.append((artist, "add"))
 
-            # append the added artist to history_list, in case we want to revert the change
-            self.history_list.append((artist, "add"))
+                # set backward button to active
+                self.backwardButton.config(state='normal')        
 
-            # set backward button to active
-            self.backwardButton.config(state='normal')        
+                # set self.press to None to deactivate the on_motion callbacks
+                self.press = None
 
-            # set self.press to None to deactivate the on_motion callbacks
-            self.press = None
+                # update canvas
+                self.canvas.draw_idle()
+        
+            # if middle button is release, stop panning by setting self.pan_start as None
+            elif event.button == 2:
+                self.pan_start = None
 
-            # update canvas
-            self.canvas.draw_idle()
-     
-        # if middle button is release, stop panning by setting self.pan_start as None
-        elif event.button == 2:
-            self.pan_start = None
+                # update canvas
+                self.canvas.draw_idle()
 
-            # update canvas
-            self.canvas.draw_idle()
+            # change cursor back to normal
+            self.canvas.get_tk_widget().config(cursor='arrow')
 
-        # change cursor back to normal
-        self.canvas.get_tk_widget().config(cursor='arrow')
-
-        # update data status display
-        self.updateStatus()
+            # update data status display
+            self.updateStatus()
 
     def on_scroll(self, event):
         """ Zoom in and zoom out with scrolling. """
@@ -461,6 +461,9 @@ class mplApp(tk.Frame):
         #     self.ax.draw_artist(patch)
         
         self.canvas.draw_idle()
+
+    def event_in_axes(self, event):
+        return self.ax.contains(event)[0]
 
     def resetButtonCallback(self):
         """ Reset the zoom to original values. Show whole image. """
