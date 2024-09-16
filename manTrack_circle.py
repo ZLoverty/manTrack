@@ -196,15 +196,12 @@ class mplApp(tk.Frame):
 
     def imgOpenDialog(self):
       
-        # Open file dialog and get image path
-        img_path = TFD.askopenfilename(filetypes=[("TIFF files", "*.tif")])
+        # Open file dialog and get image path, include many image formats
+        img_path = TFD.askopenfilename(filetypes=[("TIFF files", "*.tif"), ("JPEG files", "*.jpg"), ("PNG files", "*.png")])
         if not img_path:  # If no file is selected
             return
 
         img_path = Path(img_path)
-        if img_path.suffix.lower() != '.tif':
-            TMB.showerror('File type error', 'Please open *.tif file')
-            return
 
         self.workingDir = img_path.parent
 
