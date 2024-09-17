@@ -171,6 +171,8 @@ class CircleAnnotationApp(QtWidgets.QMainWindow):
             mousePoint = self.plotItem.vb.mapSceneToView(pos)
             x, y = mousePoint.x(), mousePoint.y()
             self.currentCircle = {'x': x, 'y': y, 'r': 0}
+            self.x0 = x
+            self.y0 = y
         elif event.button() == QtCore.Qt.RightButton:
             pos = event.scenePos()
             items = self.plotItem.scene().items(pos)
@@ -196,14 +198,16 @@ class CircleAnnotationApp(QtWidgets.QMainWindow):
             r = np.sqrt((x - self.currentCircle['x'])**2 + (y - self.currentCircle['y'])**2)
             if 'item' in self.currentCircle:
                 self.plotItem.removeItem(self.currentCircle['item'])
+            self.currentCircle['x'] = (x + self.x0) / 2
+            self.currentCircle['y'] = (y + self.y0) / 2
             self.currentCircle['r'] = r
-            self.currentCircle['item'] = self.createCircleItem(self.currentCircle)
+            self.currentCircle['item'] = self.createCircleItem(self.currentCircle, color="g")
             self.plotItem.addItem(self.currentCircle['item'])
 
     def addCircle(self, circle):
         index = self.data.index.max() + 1
         circle['index'] = index
-        circle['item'] = self.createCircleItem(circle)
+        circle['item'] = self.createCircleItem(circle, color="g")
         new_row = pd.DataFrame({'x': [circle['x']], 'y': [circle['y']], 'r': [circle['r']]}, index=[index])
         self.data = pd.concat([self.data, new_row])
         self.plotItem.addItem(circle['item'])
@@ -221,8 +225,8 @@ class CircleAnnotationApp(QtWidgets.QMainWindow):
                 self.undoButton.setEnabled(True)
                 break
 
-    def createCircleItem(self, circle):
-        pen = pg.mkPen(color='r', width=2)
+    def createCircleItem(self, circle, color="r"):
+        pen = pg.mkPen(color=color, width=2)
         ellipse = QtWidgets.QGraphicsEllipseItem(circle['x'] - circle['r'], circle['y'] - circle['r'], 2 * circle['r'], 2 * circle['r'])
         ellipse.setPen(pen)
         return ellipse
