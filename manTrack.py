@@ -39,6 +39,8 @@ Sep 16, 2024:
 1. Rewrite the code to use pyqtgraph instead of matplotlib. This allows for more interactive plotting and better performance.
 
 2. Rename to manTrack.py, use as the main program for manual tracking.
+
+Sep 18, 2024: show file name.
 """
 
 import sys
@@ -111,6 +113,9 @@ class CircleAnnotationApp(QtWidgets.QMainWindow):
         self.circlesLabel = QtWidgets.QLabel('Circles: 0')
         self.controlPanel.addWidget(self.circlesLabel)
 
+        self.fileNameLabel = QtWidgets.QLabel('No file loaded', self)
+        self.controlPanel.addWidget(self.fileNameLabel)
+
         # Connect plot events
         self.plotItem.scene().sigMouseMoved.connect(self.onMouseMove)
         self.plotItem.scene().sigMouseClicked.connect(self.onMousePress)
@@ -132,6 +137,7 @@ class CircleAnnotationApp(QtWidgets.QMainWindow):
             self.plotItem.addItem(self.imageItem)
             self.plotItem.setAspectLocked(True)
             self.plotItem.autoRange()
+            self.fileNameLabel.setText(f'Loaded file: {Path(img_path).name}')
 
     def loadData(self):
         data_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Load Data", "", "CSV Files (*.csv);;Excel Files (*.xls *.xlsx)")
