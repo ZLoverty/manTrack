@@ -18,7 +18,7 @@ Once installed, manTrack can be called from the command line by
 mantrack
 ```
 
-You can download an image (.jpg) and a data file (.csv) [here](https://drive.google.com/uc?export=download&id=1Ab8dnfNad1QvCRg3-iIH7z-K973zvsUt) to test the software.
+You can download an image (.jpg) and a data file (.csv) [here](https://drive.google.com/uc?export=download&id=1Ab8dnfNad1QvCRg3-iIH7z-K973zvsUt) to test the software. 
 
 ### Load image and data
 
