@@ -1,0 +1,49 @@
+name: Build Docs
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+      - name: Install dependencies
+        run: |
+          sudo apt install pandoc
+          python -m pip install --upgrade pip
+          python -m pip install pip-tools
+          pip-compile --output-file=requirements.txt pyproject.toml
+          python -m pip install -r requirements.txt
+          python -m pip install sphinx sphinx_rtd_theme nbsphinx pygments ipython
+
+      - name: Build HTML
+        run: sphinx-build -b html docs/source/ docs/build/html
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+         name: html-docs
+         path: docs/build/html/
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: docs/build/html

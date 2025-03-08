@@ -1,6 +1,6 @@
 """
 manTrack.py
-==================
+===========
 
 Description
 -----------
@@ -41,6 +41,8 @@ Sep 16, 2024:
 2. Rename to manTrack.py, use as the main program for manual tracking.
 
 Sep 18, 2024: show file name.
+
+Mar 08, 2025: Package as a module to simplify the setup process. 
 """
 
 import sys
@@ -50,7 +52,6 @@ import pandas as pd
 import numpy as np
 from skimage import io
 from pathlib import Path
-import pdb
 
 class CircleAnnotationApp(QtWidgets.QMainWindow):
     def __init__(self):
@@ -295,9 +296,11 @@ class CustomViewBox(pg.ViewBox):
         elif event.buttons() == QtCore.Qt.LeftButton:
             pos = event.scenePos()
             self.parent.onMouseMove(pos)
-
-if __name__ == '__main__':
+def run():
     app = QtWidgets.QApplication(sys.argv)
     ex = CircleAnnotationApp()
     ex.show()
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    run()

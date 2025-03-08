@@ -1,0 +1,5 @@
+  scikit-image
+  pandas
+  pyqt5
+  pyqtgraph
+  numpy
