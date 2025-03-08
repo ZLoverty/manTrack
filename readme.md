@@ -12,6 +12,12 @@ pip install git+https://github.com/ZLoverty/manTrack.git
 
 ## Usage
 
+Once installed, manTrack can be called from the command line by
+
+```console
+mantrack
+```
+
 ### Load image and data
 
 Click "Load" button to load an image, and "Load data" button to load preliminary particle tracking data (.csv file).
