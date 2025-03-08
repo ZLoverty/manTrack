@@ -7,7 +7,7 @@ A python GUI software that makes modifying particle tracking data easier. It all
 Download this repository to `/your/local/path`. Run the source `.py` code in the `src/` folder using
 
 ```console
-/your/local/path/src>$ python manTrack.py
+pip install git+https://github.com/ZLoverty/manTrack.git
 ```
 
 ## Usage

@@ -9,7 +9,7 @@ You can install the package via pip:
 
 .. code-block:: bash
 
-    pip install https://github.com/ZLoverty/manTrack.git
+    pip install git+https://github.com/ZLoverty/manTrack.git
 
 Usage
 -----
@@ -17,7 +17,7 @@ To use the software, you can run the following command in your terminal:
 
 .. code-block:: bash
 
-    python -m manTrack
+    mantrack
 
 You will see a window like this:
 
