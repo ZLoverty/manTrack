@@ -1,0 +1,170 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>manTrack &mdash; manTrack 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="_static/doctools.js?v=9a2dae69"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            manTrack
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">manTrack</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#usage">Usage</a><ul>
+<li><a class="reference internal" href="#mantrack-py">manTrack.py</a><ul>
+<li><a class="reference internal" href="#description">Description</a></li>
+<li><a class="reference internal" href="#edit">Edit</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">manTrack</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">manTrack</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="mantrack">
+<h1>manTrack<a class="headerlink" href="#mantrack" title="Link to this heading"></a></h1>
+<p>A python GUI software that makes modifying circle detection data easier. It allows (i) adding a circle by pressing and dragging and (ii) removing a circle by right-clicking.</p>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading"></a></h2>
+<p>You can install the package via pip:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>git+https://github.com/ZLoverty/manTrack.git
+</pre></div>
+</div>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading"></a></h2>
+<p>To use the software, you can run the following command in your terminal:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mantrack
+</pre></div>
+</div>
+<p>You will see a window like this:</p>
+<a class="reference internal image-reference" href="_images/manTrack_doc_img.png"><img alt="_images/manTrack_doc_img.png" class="align-center" src="_images/manTrack_doc_img.png" style="width: 600px;" />
+</a>
+<p>You need to load your image first, then load your preliminary circle detection data. In the draw area, you will see your image overlayed with the detected circles. You can then modify / correct the data by drawing and deleting. It is possible use middle button to zoom in and out. You can save the modified data by clicking the save button.</p>
+<section id="mantrack-py">
+<span id="module-manTrack"></span><h3>manTrack.py<a class="headerlink" href="#mantrack-py" title="Link to this heading"></a></h3>
+<section id="description">
+<h4>Description<a class="headerlink" href="#description" title="Link to this heading"></a></h4>
+<p>A simple python GUI program to for hand labeling of circle objects in images. This program features adding labels by drawing circles at mouse cursor with left button, and deleting labels by right clicking on existing labels. It also features a “undo” button, which reverts undesired edits. It also features loading existing labeling result from .csv files, which allows refining unperfect results from automatic detection algorithm.</p>
+<p>The labeling data is a pandas.DataFrame with columns x, y, r.</p>
+</section>
+<section id="edit">
+<h4>Edit<a class="headerlink" href="#edit" title="Link to this heading"></a></h4>
+<p>Jun 22, 2024:</p>
+<ol class="arabic simple">
+<li><p>remove mode module – the add/delete behavior can be separated by using different mouse buttons. Since our data management is no longer dependent on the mode, the mode module requires many more redundant operations and should be thus removed.</p></li>
+<li><p>use blit to make circle preview faster.</p></li>
+<li><p>Fix the bug arising from repeatedly clicking “Draw data”.</p></li>
+<li><p>Cross cursor when labeling.</p></li>
+</ol>
+<p>Jun 23, 2024:</p>
+<ol class="arabic simple">
+<li><p>Enable zooming and panning with middle button.</p></li>
+<li><p>Reorganize the mouse button callbacks: e.g. all the presses can be grouped in the same callback function on_press.</p></li>
+<li><p>Enable keyboard shortcuts for undo and reset zoom.</p></li>
+</ol>
+<p>July 12, 2024:</p>
+<ol class="arabic simple">
+<li><p>Load canvas and axes on start to avoid error.</p></li>
+</ol>
+<p>Sep 16, 2024:</p>
+<ol class="arabic simple">
+<li><p>Rewrite the code to use pyqtgraph instead of matplotlib. This allows for more interactive plotting and better performance.</p></li>
+<li><p>Rename to manTrack.py, use as the main program for manual tracking.</p></li>
+</ol>
+<p>Sep 18, 2024: show file name.</p>
+<p>Mar 08, 2025: Package as a module to simplify the setup process.</p>
+</section>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Zhengyang Liu.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
